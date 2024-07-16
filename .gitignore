@@ -3,3 +3,7 @@
 tags
 *decompress
 *host_compress
+snappy/dpu_snappy
+*pycache*
+*.png
+snappy/results

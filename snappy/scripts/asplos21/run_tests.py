@@ -42,7 +42,7 @@ def run_tasklet_test(files, min_tasklet, max_tasklet, incr, num_dpu):
                 for testfile in files:
                         for i in [min_tasklet] + list(range(min_tasklet + 1, max_tasklet + 1, incr)):
                                 host = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
-                                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, num_dpu, i)) / 266000000
+                                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, num_dpu, i)) / 350000000
                                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, num_dpu, i)
 
                                 if dpu > 0:
@@ -58,7 +58,7 @@ def run_tasklet_test(files, min_tasklet, max_tasklet, incr, num_dpu):
                 for testfile in files:
                         for i in [min_tasklet] + list(range(min_tasklet + 1, max_tasklet + 1, incr)):
                                 host = get_avg_host_runtime(pathlib.Path("results/decompression"), testfile)
-                                dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, num_dpu, i)) / 266000000
+                                dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, num_dpu, i)) / 350000000
                                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, num_dpu, i)
 
                                 if dpu > 0:
@@ -75,6 +75,7 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
 
                 for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
                         tasklets = get_optimal_tasklets(f"../test/{testfile}.txt", 32768, i)
+                        #tasklets = 12
 
                         os.system('make clean')
                         os.system(f'make NR_DPUS={i} NR_TASKLETS={tasklets}')
@@ -94,7 +95,7 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
                                 tasklets = get_optimal_tasklets(f"../test/{testfile}.txt", 32768, i)
 
                                 host = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
-                                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 266000000
+                                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
                                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
 
                                 if dpu > 0:
@@ -113,7 +114,7 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
                                 tasklets = get_optimal_tasklets(f"../test/{testfile}.txt", 32768, i)
 
                                 host = get_avg_host_runtime(pathlib.Path("results/decompression"), testfile)
-                                dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, i, tasklets)) / 266000000
+                                dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, i, tasklets)) / 350000000
                                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
 
                                 if dpu > 0:
@@ -134,7 +135,7 @@ def run_breakdown_test(testfile, min_dpu, max_dpu, incr, tasklets):
             writer.writerow(['prepare', 'alloc', 'load', 'copy_in', 'run', 'copy_out', 'free', 'dpus'])
 
             for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
-                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 266000000
+                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
                 
                 if dpu > 0:
@@ -146,7 +147,7 @@ def run_breakdown_test(testfile, min_dpu, max_dpu, incr, tasklets):
             writer.writerow(['prepare', 'alloc', 'load', 'copy_in', 'run', 'copy_out', 'free', 'dpus'])
 
             for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
-                dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, i, tasklets)) / 266000000
+                dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, i, tasklets)) / 350000000
                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/decompression"), testfile, i, tasklets)
 
                 if dpu > 0:

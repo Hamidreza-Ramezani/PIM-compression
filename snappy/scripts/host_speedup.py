@@ -3,6 +3,8 @@ import sys
 import pathlib
 import argparse
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_prepostproc_time
 
@@ -10,16 +12,17 @@ from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_
 Defines which files to parse for this graph, format is:
 	   'test file' : ('# dpus', '# tasklets')
 """
-files = {'terror2': ('1',   '4'), 
-        'plrabn12': ('1',   '15'), 
-		'world192': ('3',   '12'),
-		'xml'     : ('14',  '12'), 
-		'sao'     : ('19',  '12'),
-		'dickens' : ('26',  '12'),
-		'nci'     : ('86',  '12'), 
-		'mozilla' : ('131',  '12'), 
-		'spamfile': ('230', '12')}
+#files = {'terror2': ('1',   '4'), 
+#        'plrabn12': ('1',   '15'), 
+#		'world192': ('3',   '12'),
+#		'xml'     : ('14',  '12'), 
+#		'sao'     : ('19',  '12'),
+#		'dickens' : ('26',  '12'),
+#		'nci'     : ('86',  '12'), 
+#		'mozilla' : ('131',  '12'), 
+#		'spamfile': ('230', '12')}
 
+files = {'dickens' : ('512',  '16')}
 
 def setup_graph(path: pathlib.Path):
 	"""
@@ -44,6 +47,8 @@ def setup_graph(path: pathlib.Path):
 			return
 		else:
 			host_time.append(ahr)
+			#dpu_t = float(adr) / 267000000
+			#print(f"DPU runtime is {dpu_t:.6f}\n")
 			dpu_time.append(float(adr) / 267000000 + get_avg_prepostproc_time(path, filename, params[0], params[1]))
 
 	# Calculate the speedup
