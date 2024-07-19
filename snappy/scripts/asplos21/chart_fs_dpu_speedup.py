@@ -50,6 +50,8 @@ def plot_results(results, filename, **kwargs):
 			sizes.add(int(fsize[:-1]) * 1024)
 		else:
 			sizes.add(int(fsize[:-1]))		
+	#print(sizes)
+	#print(testfiles)
 	sizes = sorted(sizes)
 	testfiles = sorted(testfiles)
 
@@ -65,11 +67,12 @@ def plot_results(results, filename, **kwargs):
 	for testfile in testfiles:
 		data[testfile] = []
 		for i, size in enumerate(sizes):
-			if size > 1000:
-				gsize = int(size / 1024)
-				subset = results[results['version'] == f"{testfile}{gsize}GB"]
-			else:
-				subset = results[results['version'] == f"{testfile}{size}MB"]
+			#if size > 1000:
+			#	gsize = int(size / 1024)
+			#	subset = results[results['version'] == f"{testfile}{gsize}GB"]
+			#else:
+			#	subset = results[results['version'] == f"{testfile}{size}MB"]
+			subset = results[results['version'] == f"{testfile}{size}MB"]
 			
 			# get iteration with the max time
 			max_time = 0.0

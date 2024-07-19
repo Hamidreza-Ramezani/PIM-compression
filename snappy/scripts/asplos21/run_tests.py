@@ -22,16 +22,16 @@ def run_tasklet_test(files, min_tasklet, max_tasklet, incr, num_dpu):
         for testfile in files:
                 os.system('make clean')
                 os.system('make')
-                os.system(f'./dpu_snappy -i ../test/{testfile}.snappy > results/decompression/{testfile}_host.txt')
-                os.system(f'./dpu_snappy -c -i ../test/{testfile}.txt > results/compression/{testfile}_host.txt')
+                os.system(f'./dpu_snappy -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_host.txt')
+                os.system(f'./dpu_snappy -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_host.txt')
 
                 for i in [min_tasklet] + list(range(min_tasklet + 1, max_tasklet + 1, incr)):
                         os.system('make clean')
                         os.system(f'make NR_DPUS={num_dpu} NR_TASKLETS={i}')
-                        print(f'./dpu_snappy -d -i ../test/{testfile}.snappy > results/decompression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
-                        os.system(f'./dpu_snappy -d -i ../test/{testfile}.snappy > results/decompression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
-                        print(f'./dpu_snappy -d -c -i ../test/{testfile}.txt > results/compression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
-                        os.system(f'./dpu_snappy -d -c -i ../test/{testfile}.txt > results/compression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
+                        print(f'./dpu_snappy -d -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
+                        os.system(f'./dpu_snappy -d -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
+                        print(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
+                        os.system(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={num_dpu}_tasklets={i}.txt')
 
         # Write compression results csv
         with open('results/compression_speedup_tasklet.csv', 'w', newline='') as csvfile:
@@ -70,29 +70,31 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
         for testfile in files:
                 os.system('make clean')
                 os.system('make')
-                os.system(f'./dpu_snappy -i ../test/{testfile}.snappy > results/decompression/{testfile}_host.txt')
-                os.system(f'./dpu_snappy -c -i ../test/{testfile}.txt > results/compression/{testfile}_host.txt')
+                #os.system(f'./dpu_snappy -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_host.txt')
+                os.system(f'./dpu_snappy -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_host.txt')
 
-                for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
-                        tasklets = get_optimal_tasklets(f"../test/{testfile}.txt", 32768, i)
-                        #tasklets = 12
+                #for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
+                for i in list(range(min_dpu, max_dpu + 1, incr)):
+                        tasklets = get_optimal_tasklets(f"/data/hamid/snappy-dataset/{testfile}.txt", 32768, i)
+                        #tasklets = 16
 
                         os.system('make clean')
                         os.system(f'make NR_DPUS={i} NR_TASKLETS={tasklets}')
-                        print(f'./dpu_snappy -d -i ../test/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
-                        os.system(f'./dpu_snappy -d -i ../test/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
-                        print(f'./dpu_snappy -d -c -i ../test/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
-                        os.system(f'./dpu_snappy -d -c -i ../test/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+                        #print(f'./dpu_snappy -d -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+                        #os.system(f'./dpu_snappy -d -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+                        print(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+                        os.system(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
 
         # Write compression results csv
         with open('results/compression_speedup_dpu.csv', 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',')
-                writer.writerow(['version', 'time', 'dpus'])
-                writer.writerow(['host', '1', '0'])
+                writer.writerow(['version', 'time', 'dpus', 'tasklets'])
+                writer.writerow(['host', '1', '0', '0'])
 
                 for testfile in files:
-                    for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
-                                tasklets = get_optimal_tasklets(f"../test/{testfile}.txt", 32768, i)
+                    #for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
+                    for i in list(range(min_dpu, max_dpu + 1, incr)):
+                                tasklets = get_optimal_tasklets(f"/data/hamid/snappy-dataset/{testfile}.txt", 32768, i)
 
                                 host = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
                                 dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
@@ -100,35 +102,35 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
 
                                 if dpu > 0:
                                     std_dpu = host / (dpu + sum(dpu_overhead))
-                                    writer.writerow([testfile, std_dpu, i])
+                                    writer.writerow([testfile, std_dpu, i, tasklets])
        
         
-        # Write decompression results csv
-        with open('results/decompression_speedup_dpu.csv', 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile, delimiter=',')
-                writer.writerow(['version', 'time', 'dpus'])
-                writer.writerow(['host', '1', '0'])
+        ## Write decompression results csv
+        #with open('results/decompression_speedup_dpu.csv', 'w', newline='') as csvfile:
+        #        writer = csv.writer(csvfile, delimiter=',')
+        #        writer.writerow(['version', 'time', 'dpus'])
+        #        writer.writerow(['host', '1', '0'])
 
-                for testfile in files:
-                    for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
-                                tasklets = get_optimal_tasklets(f"../test/{testfile}.txt", 32768, i)
+        #        for testfile in files:
+        #            for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
+        #                        tasklets = get_optimal_tasklets(f"/data/hamid/snappy-dataset/{testfile}.txt", 32768, i)
 
-                                host = get_avg_host_runtime(pathlib.Path("results/decompression"), testfile)
-                                dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, i, tasklets)) / 350000000
-                                dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
+        #                        host = get_avg_host_runtime(pathlib.Path("results/decompression"), testfile)
+        #                        dpu = float(get_avg_max_cycles(pathlib.Path("results/decompression"), testfile, i, tasklets)) / 350000000
+        #                        dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
 
-                                if dpu > 0:
-                                    std_dpu = host / (dpu + sum(dpu_overhead))
-                                    writer.writerow([testfile, std_dpu, i])
+        #                        if dpu > 0:
+        #                            std_dpu = host / (dpu + sum(dpu_overhead))
+        #                            writer.writerow([testfile, std_dpu, i])
        
 def run_breakdown_test(testfile, min_dpu, max_dpu, incr, tasklets):
     for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
         os.system('make clean')
         os.system(f'make NR_DPUS={i} NR_TASKLETS={tasklets}')
-        print(f'./dpu_snappy -d -i ../test/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
-        os.system(f'./dpu_snappy -d -i ../test/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
-        print(f'./dpu_snappy -d -c -i ../test/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
-        os.system(f'./dpu_snappy -d -c -i ../test/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+        print(f'./dpu_snappy -d -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+        os.system(f'./dpu_snappy -d -i /data/hamid/snappy-dataset/{testfile}.snappy > results/decompression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+        print(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
+        os.system(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
 
     with open(f'results/{testfile}_compression_breakdown.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
@@ -173,7 +175,7 @@ if __name__ == "__main__":
         script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
         os.chdir(script_dir + "/../../")
         os.makedirs("results/compression", exist_ok=True)
-        os.makedirs("results/decompression", exist_ok=True)
+        #os.makedirs("results/decompression", exist_ok=True)
 
         # Set up the test conditions
         try:
