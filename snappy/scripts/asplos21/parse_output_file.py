@@ -106,6 +106,22 @@ def get_avg_host_runtime(path: pathlib.Path, testfile):
         else:
                 return -1
 
+
+
+def get_avg_host_runtime_withoutoverhead(path: pathlib.Path, testfile):
+
+        total_time = 0.0
+        num_files = 0
+        for filename in path.iterdir():
+                if (testfile in str(filename)) and ('host' in str(filename)):
+                        total_time += get_host_runtime(filename)
+                        num_files += 1
+
+        if num_files > 0:
+                return (total_time / num_files)
+        else:
+                return -1
+
 def get_avg_overhead_time(path: pathlib.Path, testfile, num_dpus, num_tasks):
         """
         Calculate the average broken down overhead time reported by output

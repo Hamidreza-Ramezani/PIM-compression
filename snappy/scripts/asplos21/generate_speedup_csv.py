@@ -4,7 +4,7 @@ import csv
 import argparse
 import pathlib
 from math import ceil
-from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_overhead_time
+from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_host_runtime_withoutoverhead, get_avg_overhead_time
 MAX_DPUS = 640
 MAX_TASKLETS = 24
 
@@ -22,21 +22,29 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
 
         with open('results/compression_speedup_dpu.csv', 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',')
-                writer.writerow(['version', 'time', 'dpus', 'tasklets'])
-                writer.writerow(['host', '1', '0', '0'])
+                #writer.writerow(['version', 'time', 'dpus', 'tasklets'])
+                #writer.writerow(['host', '1', '0', '0'])
+                writer.writerow(['version', 'raw','rawwithoutoverhead', 'time','timewithoutoverhead' ,'dpus', 'tasklets'])
+                writer.writerow(['host','0', '0', '1', '1' ,'0', '0'])
 
                 for testfile in files:
                     #for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
                     for i in list(range(min_dpu, max_dpu + 1, incr)):
                                 tasklets = get_optimal_tasklets(f"/data/hamid/snappy-dataset/{testfile}.txt", 32768, i)
 
-                                host = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
+                                host_withoverhead = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
+                                host_withoutoverhead = get_avg_host_runtime_withoutoverhead(pathlib.Path("results/compression"), testfile)
                                 dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
                                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
 
                                 if dpu > 0:
-                                    std_dpu = host / (dpu + sum(dpu_overhead))
-                                    writer.writerow([testfile, std_dpu, i, tasklets])
+                                    #std_dpu = host / (dpu + sum(dpu_overhead))
+                                    #writer.writerow([testfile, std_dpu, i, tasklets])
+
+                                    dpu_withoverhead = dpu + sum(dpu_overhead)
+                                    std_dpu_withoverhead = host_withoverhead / dpu_withoverhead
+                                    std_dpu_withoutoverhead = host_withoutoverhead / dpu
+                                    writer.writerow([testfile, dpu_withoverhead, dpu, std_dpu_withoverhead, std_dpu_withoutoverhead, i, tasklets])
        
         
 if __name__ == "__main__":
