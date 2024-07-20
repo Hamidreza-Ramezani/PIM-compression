@@ -73,9 +73,4 @@ python chart_fs_dpu_speedup_no_overhead.py -r ../../results/compression_speedup_
 #sudo python run_tests.py -t 1 -r 64 576 -i 64 -f dickens8MB dickens16MB dickens32MB dickens64MB dickens128MB dickens256MB dickens512MB dickens1024MB
 
 
-#python chart_fs_dpu_speedup.py -r ../../results/compression_speedup_dpu.csv -o output
-#python chart_dpu_speedup.py -r ../../results/compression_speedup_dpu.csv -o output
-
-
-
 

@@ -4,7 +4,7 @@ import csv
 import argparse
 import pathlib
 from math import ceil
-from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_host_runtime_withoutoverhead, get_avg_overhead_time
+from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_host_runtime_withoutoverhead, get_avg_overhead_time, get_avg_dpu_runtime
 MAX_DPUS = 640
 MAX_TASKLETS = 24
 
@@ -34,7 +34,8 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
 
                                 host_withoverhead = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
                                 host_withoutoverhead = get_avg_host_runtime_withoutoverhead(pathlib.Path("results/compression"), testfile)
-                                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
+                                #dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
+                                dpu = get_avg_dpu_runtime(pathlib.Path("results/compression"), testfile, i, tasklets)
                                 dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
 
                                 if dpu > 0:

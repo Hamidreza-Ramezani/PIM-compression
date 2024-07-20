@@ -198,3 +198,21 @@ def get_compr_ratio(path: pathlib.Path, testfile, num_dpus, num_tasks):
                                                 line_split = line.split(' ')
                                                 return float(line_split[-1])
         return -1
+
+def get_avg_dpu_runtime(path: pathlib.Path, testfile, num_dpus, num_tasks):
+
+        total_time = 0.0
+        num_files = 0
+        for filename in path.iterdir():
+                dpus = re.search(rf"dpus={num_dpus}[^0-9]", str(filename))
+                tasklets = re.search(rf"tasklets={num_tasks}[^0-9]", str(filename))
+                
+                if (testfile in str(filename)) and (dpus is not None) and (tasklets is not None):
+                        total_time += get_host_runtime(filename)
+                        num_files += 1
+
+        if num_files > 0:
+                return (total_time / num_files)
+        else:
+                return -1
+

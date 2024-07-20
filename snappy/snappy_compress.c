@@ -614,8 +614,11 @@ snappy_status snappy_compress_dpu(struct host_buffer_context *input, struct host
 	gettimeofday(&end, NULL);
 	runtime->copy_in = get_runtime(&start, &end);
 	
+	gettimeofday(&start, NULL);
 	// Launch all DPUs
 	int ret = dpu_launch(dpus, DPU_SYNCHRONOUS);
+	gettimeofday(&end, NULL);
+	runtime->run = get_runtime(&start, &end);
 	if (ret != 0)
 	{
 		DPU_ASSERT(dpu_free(dpus));

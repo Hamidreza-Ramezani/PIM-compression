@@ -85,24 +85,24 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
                         print(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
                         os.system(f'./dpu_snappy -d -c -i /data/hamid/snappy-dataset/{testfile}.txt > results/compression/{testfile}_dpus={i}_tasklets={tasklets}.txt')
 
-        # Write compression results csv
-        with open('results/compression_speedup_dpu.csv', 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile, delimiter=',')
-                writer.writerow(['version', 'time', 'dpus', 'tasklets'])
-                writer.writerow(['host', '1', '0', '0'])
+        ## Write compression results csv
+        #with open('results/compression_speedup_dpu.csv', 'w', newline='') as csvfile:
+        #        writer = csv.writer(csvfile, delimiter=',')
+        #        writer.writerow(['version', 'time', 'dpus', 'tasklets'])
+        #        writer.writerow(['host', '1', '0', '0'])
 
-                for testfile in files:
-                    #for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
-                    for i in list(range(min_dpu, max_dpu + 1, incr)):
-                                tasklets = get_optimal_tasklets(f"/data/hamid/snappy-dataset/{testfile}.txt", 32768, i)
+        #        for testfile in files:
+        #            #for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
+        #            for i in list(range(min_dpu, max_dpu + 1, incr)):
+        #                        tasklets = get_optimal_tasklets(f"/data/hamid/snappy-dataset/{testfile}.txt", 32768, i)
 
-                                host = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
-                                dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
-                                dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
+        #                        host = get_avg_host_runtime(pathlib.Path("results/compression"), testfile)
+        #                        dpu = float(get_avg_max_cycles(pathlib.Path("results/compression"), testfile, i, tasklets)) / 350000000
+        #                        dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets)
 
-                                if dpu > 0:
-                                    std_dpu = host / (dpu + sum(dpu_overhead))
-                                    writer.writerow([testfile, std_dpu, i, tasklets])
+        #                        if dpu > 0:
+        #                            std_dpu = host / (dpu + sum(dpu_overhead))
+        #                            writer.writerow([testfile, std_dpu, i, tasklets])
        
         
         ## Write decompression results csv
