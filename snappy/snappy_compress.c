@@ -625,9 +625,9 @@ snappy_status snappy_compress_dpu(struct host_buffer_context *input, struct host
 		return SNAPPY_INVALID_INPUT;
 	}
 
-	// Open the output file and write the header
-	FILE *fout = fopen(output->file_name, "w");
-	fwrite(output->buffer, sizeof(uint8_t), output->length, fout);
+	//// Open the output file and write the header
+	//FILE *fout = fopen(output->file_name, "w");
+	//fwrite(output->buffer, sizeof(uint8_t), output->length, fout);
 	
 	// Deallocate the DPUs
 	runtime->copy_out = 0.0;
@@ -689,21 +689,21 @@ snappy_status snappy_compress_dpu(struct host_buffer_context *input, struct host
 		gettimeofday(&end, NULL);
 		runtime->copy_out += get_runtime(&start, &end);	
 
-		// Print the logs
-		dpu_idx = starting_dpu_idx;
-		DPU_FOREACH(dpu_rank, dpu) {
-			printf("------DPU %d Logs------\n", dpu_idx);
-			DPU_ASSERT(dpu_log_read(dpu, stdout));
-			dpu_idx++;
-		}
+		//// Print the logs
+		//dpu_idx = starting_dpu_idx;
+		//DPU_FOREACH(dpu_rank, dpu) {
+		//	printf("------DPU %d Logs------\n", dpu_idx);
+		//	DPU_ASSERT(dpu_log_read(dpu, stdout));
+		//	dpu_idx++;
+		//}
 
-		for (uint32_t d = nr_dpus; d > 0; d--) {
-			uint32_t curr_dpu_idx = dpu_idx - d;
-			for (uint8_t i = 0; i < NR_TASKLETS; i++) {
-				fwrite(&dpu_bufs[curr_dpu_idx][output_offset[curr_dpu_idx][i]], sizeof(uint8_t), output_length[curr_dpu_idx][i], fout);
-			}
-			free(dpu_bufs[curr_dpu_idx]);
-		}
+		//for (uint32_t d = nr_dpus; d > 0; d--) {
+		//	uint32_t curr_dpu_idx = dpu_idx - d;
+		//	for (uint8_t i = 0; i < NR_TASKLETS; i++) {
+		//		fwrite(&dpu_bufs[curr_dpu_idx][output_offset[curr_dpu_idx][i]], sizeof(uint8_t), output_length[curr_dpu_idx][i], fout);
+		//	}
+		//	free(dpu_bufs[curr_dpu_idx]);
+		//}
 	}
 
 	gettimeofday(&start, NULL);
@@ -711,7 +711,7 @@ snappy_status snappy_compress_dpu(struct host_buffer_context *input, struct host
 	gettimeofday(&end, NULL);
 	runtime->d_free = get_runtime(&start, &end);
 
-	fclose(fout);
+	//fclose(fout);
 
 	return SNAPPY_OK;
 }

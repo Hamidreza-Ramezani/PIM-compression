@@ -31,7 +31,7 @@ int main()
 	perfcounter_config(COUNT_INSTRUCTIONS, (idx == 0)? true : false);
 #endif
 
-	printf("DPU starting, tasklet %d\n", idx);
+	//printf("DPU starting, tasklet %d\n", idx);
 	
 	// Check that this tasklet has work to run
 	if ((idx != 0) && (input_block_offset[idx] == 0)) {
@@ -78,16 +78,16 @@ int main()
 		// Do the uncompress
 		if (dpu_compress(&input, &output, block_size))
 		{
-			printf("Tasklet %d: failed in %ld cycles\n", idx, perfcounter_get());
+			//printf("Tasklet %d: failed in %ld cycles\n", idx, perfcounter_get());
 			return -1;
 		}
 		output_length[idx] = output.length;
 	}
 
 #ifdef COUNT_CYC
-	printf("Tasklet %d: %ld cycles, %d bytes\n", idx, perfcounter_get(), input.length);
+	//printf("Tasklet %d: %ld cycles, %d bytes\n", idx, perfcounter_get(), input.length);
 #else
-	printf("Tasklet %d: %ld instructions, %d bytes\n", idx, perfcounter_get(), input.length);
+	//printf("Tasklet %d: %ld instructions, %d bytes\n", idx, perfcounter_get(), input.length);
 #endif
 
 	return 0;

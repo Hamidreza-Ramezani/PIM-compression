@@ -206,8 +206,8 @@ int main(int argc, char **argv)
 	if (status == SNAPPY_OK)
 	{
 		// Write the output buffer from main memory to a file
-		if (!(compress && use_dpu))
-			write_output_host(output_file, &output);
+		//if (!(compress && use_dpu))
+		//	write_output_host(output_file, &output);
 
 		if (compress) {
 			printf("Compressed %ld bytes to: %s\n", output.length, output_file);
