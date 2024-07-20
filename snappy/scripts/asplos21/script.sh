@@ -66,8 +66,8 @@ sudo python run_tests.py -t 1 -f xml1024MB -r 576 576 -i 64
 sudo python generate_speedup_csv.py -r 64 576 -i 64 -f dickens8MB dickens16MB dickens32MB dickens64MB dickens128MB dickens256MB dickens512MB dickens1024MB mozilla8MB mozilla16MB mozilla32MB mozilla64MB mozilla128MB mozilla256MB mozilla512MB mozilla1024MB nci8MB nci16MB nci32MB nci64MB nci128MB nci256MB nci512MB nci1024MB sao8MB sao16MB sao32MB sao64MB sao128MB sao256MB sao512MB sao1024MB spamfile8MB spamfile16MB spamfile32MB spamfile64MB spamfile128MB spamfile256MB spamfile512MB spamfile1024MB xml8MB xml16MB xml32MB xml64MB xml128MB xml256MB xml512MB xml1024MB
 
 
-python chart_fs_dpu_speedup.py -r ../../results/compression_speedup_dpu.csv -o output
-python chart_fs_dpu_speedup_no_overhead.py -r ../../results/compression_speedup_dpu.csv -o output
+python chart_fs_dpu_speedup.py -r ../../results/compression_speedup_dpu.csv -o output1
+python chart_fs_dpu_speedup_no_overhead.py -r ../../results/compression_speedup_dpu.csv -o output2
 
 
 #sudo python run_tests.py -t 1 -r 64 576 -i 64 -f dickens8MB dickens16MB dickens32MB dickens64MB dickens128MB dickens256MB dickens512MB dickens1024MB

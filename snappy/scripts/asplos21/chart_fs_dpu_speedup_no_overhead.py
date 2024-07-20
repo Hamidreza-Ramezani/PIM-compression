@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
 import argparse
+from matplotlib.ticker import MaxNLocator
 
 # defaults for nice publication ready rendering
 fontsize = 12
@@ -50,8 +51,6 @@ def plot_results(results, filename, **kwargs):
 			sizes.add(int(fsize[:-1]) * 1024)
 		else:
 			sizes.add(int(fsize[:-1]))		
-	#print(sizes)
-	#print(testfiles)
 	sizes = sorted(sizes)
 	testfiles = sorted(testfiles)
 
@@ -105,7 +104,8 @@ def plot_results(results, filename, **kwargs):
 	# configure ticks to be what is in the columns
 	ax.xaxis.set_ticks(ticks)
 	ax.xaxis.set_ticklabels(sizes)
-	ax.yaxis.set_ticks(np.arange(0, max(results['timewithoutoverhead'] + 1), 1))
+	ax.yaxis.set_major_locator(MaxNLocator(nbins=10))
+	#ax.yaxis.set_ticks(np.arange(0, max(results['timewithoutoverhead'] + 1), 1))
 
 	ax.grid(True, linestyle='dashed')
 
