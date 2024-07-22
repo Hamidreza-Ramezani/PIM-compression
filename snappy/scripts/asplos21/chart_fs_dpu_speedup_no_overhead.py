@@ -22,7 +22,7 @@ def read_csv(filename):
 def plot_results(results, filename, **kwargs):
 	# 6.8 inch high figure, 2.5 inch across (matches column width)
 	fig, ax = plt.subplots(figsize=(6.8, 3))
-	ax2 = ax.twiny()
+	#ax2 = ax.twiny()
 
 	# pick out host results, which we assume is always just one number
 	host_results = results[results['version'] == 'host']
@@ -110,10 +110,10 @@ def plot_results(results, filename, **kwargs):
 	ax.grid(True, linestyle='dashed')
 
 	# set the #dpus axis
-	ax2.set_xlim(ax.get_xlim())
-	ax2.xaxis.set_ticks(ticks)
+	#ax2.set_xlim(ax.get_xlim())
+	#ax2.xaxis.set_ticks(ticks)
 	#ax2.set_xticklabels(ax2labels)
-	ax2.set_xlabel("Number of DPUs (Tasklets per DPU)", fontsize=fontsize)
+	#ax2.set_xlabel("Number of DPUs (Tasklets per DPU)", fontsize=fontsize)
 
 	if 'xlab' in kwargs:
 		ax.set_xlabel(kwargs['xlab'], fontsize=fontsize)
