@@ -55,12 +55,12 @@ static int read_input_host(char *in_file, struct host_buffer_context *input)
  * @param out_file: output filename.
  * @param output: holds output buffer information
  */
-static void write_output_host(char *out_file, struct host_buffer_context *output)
-{
-	FILE *fout = fopen(out_file, "w");
-	fwrite(output->buffer, 1, output->length, fout);
-	fclose(fout);
-}
+//static void write_output_host(char *out_file, struct host_buffer_context *output)
+//{
+//	FILE *fout = fopen(out_file, "w");
+//	fwrite(output->buffer, 1, output->length, fout);
+//	fclose(fout);
+//}
 
 /**
  * Print out application usage.

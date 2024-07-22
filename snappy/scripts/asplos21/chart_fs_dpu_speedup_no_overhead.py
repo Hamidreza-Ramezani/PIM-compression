@@ -90,7 +90,7 @@ def plot_results(results, filename, **kwargs):
 				dpus.append(max_dpu)
 				ax2labels.append(label)
 			data[testfile].append(max_timewithoutoverhead)
-		get_dpu = False
+		#get_dpu = False
 
 	for idx, version in enumerate(data):
 		# not a great idea to re-use markers, usually better to reduce your lines
@@ -112,7 +112,7 @@ def plot_results(results, filename, **kwargs):
 	# set the #dpus axis
 	ax2.set_xlim(ax.get_xlim())
 	ax2.xaxis.set_ticks(ticks)
-	ax2.set_xticklabels(ax2labels)
+	#ax2.set_xticklabels(ax2labels)
 	ax2.set_xlabel("Number of DPUs (Tasklets per DPU)", fontsize=fontsize)
 
 	if 'xlab' in kwargs:
