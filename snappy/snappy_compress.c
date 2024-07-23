@@ -3,6 +3,7 @@
 #include <dpu_log.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "snappy_compress.h"
 
@@ -464,8 +465,23 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 	// Write the decompressed block size
 	write_varint32(output, block_size);
 
-	while (input->curr < (input->buffer + input->length)) {
-		// Get the next block size ot compress
+	//while (input->curr < (input->buffer + input->length)) {
+	//	// Get the next block size to compress
+	//	uint32_t to_compress = MIN(length_remain, block_size);
+
+	//	// Get the size of the hash table used for this block
+	//	uint32_t table_size;
+	//	get_hash_table(table, to_compress, &table_size);
+	//	
+	//	// Compress the current block
+	//	compress_block(input, output, to_compress, table, table_size);
+	//	
+	//	length_remain -= to_compress;
+	//}
+	unsigned long num_blocks = (unsigned long)ceil((double)input->length/(double)block_size);
+	//printf("number of blocks is  %lu\n", num_blocks);
+	for (int i=0; i<num_blocks; i++) {
+		// Get the next block size to compress
 		uint32_t to_compress = MIN(length_remain, block_size);
 
 		// Get the size of the hash table used for this block
