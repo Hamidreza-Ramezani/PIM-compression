@@ -31,7 +31,7 @@ dpu:
 host: dpu_snappy
 	
 dpu_snappy: $(SOURCE)
-	$(CC) $(CFLAGS) -DNR_DPUS=$(NR_DPUS) -DNR_TASKLETS=$(NR_TASKLETS) $^ -o $@ $(DPU_OPTS)
+	$(CC) $(CFLAGS) -DNR_DPUS=$(NR_DPUS) -DNR_TASKLETS=$(NR_TASKLETS) $^ -o $@
 
 tags:
 	ctags -R -f tags . /usr/share/upmem/include

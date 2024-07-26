@@ -1,9 +1,12 @@
-#include <dpu.h>
-#include <dpu_memory.h>
-#include <dpu_log.h>
+//#include <dpu.h>
+//#include <dpu_memory.h>
+//#include <dpu_log.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
+#include <stdbool.h>
 
 #include <pthread.h>
 #include "snappy_compress.h"
@@ -614,234 +617,234 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 	return SNAPPY_OK;
 }
 
-snappy_status snappy_compress_dpu(struct host_buffer_context *input, struct host_buffer_context *output, uint32_t block_size, struct program_runtime *runtime)
-{
-	struct timeval start;
-	struct timeval end;
-	gettimeofday(&start, NULL);
-
-	// Calculate the workload of each task
-	uint32_t num_blocks = (input->length + block_size - 1) / block_size;
-	uint32_t input_blocks_per_dpu = (num_blocks + NR_DPUS - 1) / NR_DPUS;
-	uint32_t input_blocks_per_task = (num_blocks + TOTAL_NR_TASKLETS - 1) / TOTAL_NR_TASKLETS;
-
-	uint32_t input_block_offset[NR_DPUS][NR_TASKLETS] = {0};
-	uint32_t output_offset[NR_DPUS][NR_TASKLETS] = {0};
-	
-	uint32_t dpu_idx = 0;
-	uint32_t task_idx = 0;
-	uint32_t dpu_blocks = 0;
-	for (uint32_t i = 0; i < num_blocks; i++) {
-		// If we have reached the next DPU's boundary, update the index
-		if (dpu_blocks == input_blocks_per_dpu) {
-			dpu_idx++;
-			task_idx = 0;
-			dpu_blocks = 0;
-		}
-		
-		// If we have reached the next tasks's boundary, log the offset
-		if (dpu_blocks == (input_blocks_per_task * task_idx)) {
-			input_block_offset[dpu_idx][task_idx] = i;
-			output_offset[dpu_idx][task_idx] = ALIGN(snappy_max_compressed_length(block_size * dpu_blocks), 64);
-			task_idx++;
-		}
-
-		dpu_blocks++;
-	}
-
-	// Write the decompressed block size and length
-	write_varint32(output, input->length);
-	write_varint32(output, block_size);
-	output->length = output->curr - output->buffer;
-	
-	gettimeofday(&end, NULL);
-	runtime->pre += get_runtime(&start, &end);
-
-	// Allocate DPUs
-	gettimeofday(&start, NULL);
-	struct dpu_set_t dpus;
-	struct dpu_set_t dpu_rank;
-	struct dpu_set_t dpu;
-	DPU_ASSERT(dpu_alloc(NR_DPUS, NULL, &dpus));
-	gettimeofday(&end, NULL);
-	runtime->d_alloc = get_runtime(&start, &end);
-
-	// Load program
-	gettimeofday(&start, NULL);
-	DPU_ASSERT(dpu_load(dpus, DPU_COMPRESS_PROGRAM, NULL));
-	gettimeofday(&end, NULL);
-	runtime->load = get_runtime(&start, &end);
-
-	// Copy variables common to all DPUs
-	gettimeofday(&start, NULL);
-#ifdef BULK_XFER
-	DPU_ASSERT(dpu_prepare_xfer(dpus, &block_size));
-       	DPU_ASSERT(dpu_push_xfer(dpus, DPU_XFER_TO_DPU, "block_size", 0, sizeof(uint32_t), DPU_XFER_DEFAULT));
-#else
-	DPU_ASSERT(dpu_copy_to(dpus, "block_size", 0, &block_size, sizeof(uint32_t)));
-#endif
-
-	dpu_idx = 0;
-	DPU_RANK_FOREACH(dpus, dpu_rank) {
-#ifdef BULK_XFER
-		uint32_t largest_input_length = 0;
-		uint32_t starting_dpu_idx = dpu_idx;
-#endif
-		DPU_FOREACH(dpu_rank, dpu) {
-			// Add check to get rid of array out of bounds compiler warning
-			if (dpu_idx >= NR_DPUS)
-				break; 
-
-			uint32_t input_length = 0;
-			if ((dpu_idx != (NR_DPUS - 1)) && (input_block_offset[dpu_idx + 1][0] != 0)) {
-				uint32_t blocks = (input_block_offset[dpu_idx + 1][0] - input_block_offset[dpu_idx][0]);
-				input_length = blocks * block_size;
-			}
-			else if ((dpu_idx == 0) || (input_block_offset[dpu_idx][0] != 0)) {
-				input_length = input->length - (input_block_offset[dpu_idx][0] * block_size);
-			} 
-			DPU_ASSERT(dpu_copy_to(dpu, "input_length", 0, &input_length, sizeof(uint32_t)));
-
-#ifdef BULK_XFER		
-			if (largest_input_length < input_length)
-				largest_input_length = input_length;
-		
-			// If all prepared transfers have a larger transfer length, push them first
-			// and then set up the next transfer
-			if (input_length < largest_input_length) {
-				DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "input_buffer", 0, ALIGN(largest_input_length, 8), DPU_XFER_DEFAULT));
-				largest_input_length = input_length;
-			}
-
-			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)(input->curr + (input_block_offset[dpu_idx][0] * block_size))));	
-#else
-			DPU_ASSERT(dpu_copy_to(dpu, "input_block_offset", 0, input_block_offset[dpu_idx], sizeof(uint32_t) * NR_TASKLETS));
-			DPU_ASSERT(dpu_copy_to(dpu, "output_offset", 0, output_offset[dpu_idx], sizeof(uint32_t) * NR_TASKLETS));
-			DPU_ASSERT(dpu_copy_to(dpu, "input_buffer", 0, input->curr + (input_block_offset[dpu_idx][0] * block_size), ALIGN(input_length, 8)));
-#endif
-			dpu_idx++;
-		}
-
-#ifdef BULK_XFER
-		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "input_buffer", 0, ALIGN(largest_input_length, 8), DPU_XFER_DEFAULT));
-		
-		dpu_idx = starting_dpu_idx;
-		DPU_FOREACH(dpu_rank, dpu) {
-			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)input_block_offset[dpu_idx]));
-			dpu_idx++;
-		}
-		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "input_block_offset", 0, sizeof(uint32_t) * NR_TASKLETS, DPU_XFER_DEFAULT));
-
-		dpu_idx = starting_dpu_idx;
-		DPU_FOREACH(dpu_rank, dpu) {
-			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)output_offset[dpu_idx]));
-			dpu_idx++;
-		}
-		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "output_offset", 0, sizeof(uint32_t) * NR_TASKLETS, DPU_XFER_DEFAULT));
-#endif
-	}
-
-	gettimeofday(&end, NULL);
-	runtime->copy_in = get_runtime(&start, &end);
-	
-	gettimeofday(&start, NULL);
-	// Launch all DPUs
-	int ret = dpu_launch(dpus, DPU_SYNCHRONOUS);
-	gettimeofday(&end, NULL);
-	runtime->run = get_runtime(&start, &end);
-	if (ret != 0)
-	{
-		DPU_ASSERT(dpu_free(dpus));
-		return SNAPPY_INVALID_INPUT;
-	}
-
-	//// Open the output file and write the header
-	//FILE *fout = fopen(output->file_name, "w");
-	//fwrite(output->buffer, sizeof(uint8_t), output->length, fout);
-	
-	// Deallocate the DPUs
-	runtime->copy_out = 0.0;
-	uint32_t max_output_length = snappy_max_compressed_length(input_blocks_per_dpu * block_size);
-	dpu_idx = 0;
-	DPU_RANK_FOREACH(dpus, dpu_rank) {
-		uint32_t starting_dpu_idx = dpu_idx;
-		gettimeofday(&start, NULL);
-
-		// Get number of DPUs in this rank
-		uint32_t nr_dpus;
-		DPU_ASSERT(dpu_get_nr_dpus(dpu_rank, &nr_dpus));
-		
-		uint8_t *dpu_bufs[NR_DPUS] = {NULL};
-		uint32_t output_length[NR_DPUS][NR_TASKLETS] = {0};
-
-#ifdef BULK_XFER
-		uint32_t largest_output_length = 0;
-		DPU_FOREACH(dpu_rank, dpu) {
-			DPU_ASSERT(dpu_prepare_xfer(dpu, output_length[dpu_idx]));
-			dpu_idx++;
-		}
-		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_FROM_DPU, "output_length", 0, sizeof(uint32_t) * NR_TASKLETS, DPU_XFER_DEFAULT));
-		dpu_idx = starting_dpu_idx;
-#endif
-
-		DPU_FOREACH(dpu_rank, dpu) {
-#ifndef BULK_XFER
-			DPU_ASSERT(dpu_copy_from(dpu, "output_length", 0, output_length[dpu_idx], sizeof(uint32_t) * NR_TASKLETS));
-#endif	
-			// Calculate the total output length
-			uint32_t dpu_output_length = 0;
-			for (uint8_t i = 0; i < NR_TASKLETS; i++) {
-				if (output_length[dpu_idx][i] != 0) {
-					output->length += output_length[dpu_idx][i];
-					dpu_output_length = output_offset[dpu_idx][i] + output_length[dpu_idx][i];
-				}
-			}
-
-			// Prepare the transfer
-			dpu_bufs[dpu_idx] = malloc(max_output_length);
-#ifdef BULK_XFER
-			if (largest_output_length < dpu_output_length)
-				largest_output_length = dpu_output_length;
-
-			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)dpu_bufs[dpu_idx]));
-#else
-			DPU_ASSERT(dpu_copy_from(dpu, "output_buffer", 0, dpu_bufs[dpu_idx], ALIGN(dpu_output_length, 8)));
-#endif
-
-			dpu_idx++;
-		}
-		
-#ifdef BULK_XFER
-		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_FROM_DPU, "output_buffer", 0, ALIGN(largest_output_length, 8), DPU_XFER_DEFAULT));
-#endif
-		// Don't count the time it takes to read the DPU log or write the data to a file, 
-		// since we don't count that for the host
-		gettimeofday(&end, NULL);
-		runtime->copy_out += get_runtime(&start, &end);	
-
-		//// Print the logs
-		//dpu_idx = starting_dpu_idx;
-		//DPU_FOREACH(dpu_rank, dpu) {
-		//	printf("------DPU %d Logs------\n", dpu_idx);
-		//	DPU_ASSERT(dpu_log_read(dpu, stdout));
-		//	dpu_idx++;
-		//}
-
-		//for (uint32_t d = nr_dpus; d > 0; d--) {
-		//	uint32_t curr_dpu_idx = dpu_idx - d;
-		//	for (uint8_t i = 0; i < NR_TASKLETS; i++) {
-		//		fwrite(&dpu_bufs[curr_dpu_idx][output_offset[curr_dpu_idx][i]], sizeof(uint8_t), output_length[curr_dpu_idx][i], fout);
-		//	}
-		//	free(dpu_bufs[curr_dpu_idx]);
-		//}
-	}
-
-	gettimeofday(&start, NULL);
-	DPU_ASSERT(dpu_free(dpus));
-	gettimeofday(&end, NULL);
-	runtime->d_free = get_runtime(&start, &end);
-
-	//fclose(fout);
-
-	return SNAPPY_OK;
-}
+//snappy_status snappy_compress_dpu(struct host_buffer_context *input, struct host_buffer_context *output, uint32_t block_size, struct program_runtime *runtime)
+//{
+//	struct timeval start;
+//	struct timeval end;
+//	gettimeofday(&start, NULL);
+//
+//	// Calculate the workload of each task
+//	uint32_t num_blocks = (input->length + block_size - 1) / block_size;
+//	uint32_t input_blocks_per_dpu = (num_blocks + NR_DPUS - 1) / NR_DPUS;
+//	uint32_t input_blocks_per_task = (num_blocks + TOTAL_NR_TASKLETS - 1) / TOTAL_NR_TASKLETS;
+//
+//	uint32_t input_block_offset[NR_DPUS][NR_TASKLETS] = {0};
+//	uint32_t output_offset[NR_DPUS][NR_TASKLETS] = {0};
+//	
+//	uint32_t dpu_idx = 0;
+//	uint32_t task_idx = 0;
+//	uint32_t dpu_blocks = 0;
+//	for (uint32_t i = 0; i < num_blocks; i++) {
+//		// If we have reached the next DPU's boundary, update the index
+//		if (dpu_blocks == input_blocks_per_dpu) {
+//			dpu_idx++;
+//			task_idx = 0;
+//			dpu_blocks = 0;
+//		}
+//		
+//		// If we have reached the next tasks's boundary, log the offset
+//		if (dpu_blocks == (input_blocks_per_task * task_idx)) {
+//			input_block_offset[dpu_idx][task_idx] = i;
+//			output_offset[dpu_idx][task_idx] = ALIGN(snappy_max_compressed_length(block_size * dpu_blocks), 64);
+//			task_idx++;
+//		}
+//
+//		dpu_blocks++;
+//	}
+//
+//	// Write the decompressed block size and length
+//	write_varint32(output, input->length);
+//	write_varint32(output, block_size);
+//	output->length = output->curr - output->buffer;
+//	
+//	gettimeofday(&end, NULL);
+//	runtime->pre += get_runtime(&start, &end);
+//
+//	// Allocate DPUs
+//	gettimeofday(&start, NULL);
+//	struct dpu_set_t dpus;
+//	struct dpu_set_t dpu_rank;
+//	struct dpu_set_t dpu;
+//	DPU_ASSERT(dpu_alloc(NR_DPUS, NULL, &dpus));
+//	gettimeofday(&end, NULL);
+//	runtime->d_alloc = get_runtime(&start, &end);
+//
+//	// Load program
+//	gettimeofday(&start, NULL);
+//	DPU_ASSERT(dpu_load(dpus, DPU_COMPRESS_PROGRAM, NULL));
+//	gettimeofday(&end, NULL);
+//	runtime->load = get_runtime(&start, &end);
+//
+//	// Copy variables common to all DPUs
+//	gettimeofday(&start, NULL);
+//#ifdef BULK_XFER
+//	DPU_ASSERT(dpu_prepare_xfer(dpus, &block_size));
+//       	DPU_ASSERT(dpu_push_xfer(dpus, DPU_XFER_TO_DPU, "block_size", 0, sizeof(uint32_t), DPU_XFER_DEFAULT));
+//#else
+//	DPU_ASSERT(dpu_copy_to(dpus, "block_size", 0, &block_size, sizeof(uint32_t)));
+//#endif
+//
+//	dpu_idx = 0;
+//	DPU_RANK_FOREACH(dpus, dpu_rank) {
+//#ifdef BULK_XFER
+//		uint32_t largest_input_length = 0;
+//		uint32_t starting_dpu_idx = dpu_idx;
+//#endif
+//		DPU_FOREACH(dpu_rank, dpu) {
+//			// Add check to get rid of array out of bounds compiler warning
+//			if (dpu_idx >= NR_DPUS)
+//				break; 
+//
+//			uint32_t input_length = 0;
+//			if ((dpu_idx != (NR_DPUS - 1)) && (input_block_offset[dpu_idx + 1][0] != 0)) {
+//				uint32_t blocks = (input_block_offset[dpu_idx + 1][0] - input_block_offset[dpu_idx][0]);
+//				input_length = blocks * block_size;
+//			}
+//			else if ((dpu_idx == 0) || (input_block_offset[dpu_idx][0] != 0)) {
+//				input_length = input->length - (input_block_offset[dpu_idx][0] * block_size);
+//			} 
+//			DPU_ASSERT(dpu_copy_to(dpu, "input_length", 0, &input_length, sizeof(uint32_t)));
+//
+//#ifdef BULK_XFER		
+//			if (largest_input_length < input_length)
+//				largest_input_length = input_length;
+//		
+//			// If all prepared transfers have a larger transfer length, push them first
+//			// and then set up the next transfer
+//			if (input_length < largest_input_length) {
+//				DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "input_buffer", 0, ALIGN(largest_input_length, 8), DPU_XFER_DEFAULT));
+//				largest_input_length = input_length;
+//			}
+//
+//			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)(input->curr + (input_block_offset[dpu_idx][0] * block_size))));	
+//#else
+//			DPU_ASSERT(dpu_copy_to(dpu, "input_block_offset", 0, input_block_offset[dpu_idx], sizeof(uint32_t) * NR_TASKLETS));
+//			DPU_ASSERT(dpu_copy_to(dpu, "output_offset", 0, output_offset[dpu_idx], sizeof(uint32_t) * NR_TASKLETS));
+//			DPU_ASSERT(dpu_copy_to(dpu, "input_buffer", 0, input->curr + (input_block_offset[dpu_idx][0] * block_size), ALIGN(input_length, 8)));
+//#endif
+//			dpu_idx++;
+//		}
+//
+//#ifdef BULK_XFER
+//		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "input_buffer", 0, ALIGN(largest_input_length, 8), DPU_XFER_DEFAULT));
+//		
+//		dpu_idx = starting_dpu_idx;
+//		DPU_FOREACH(dpu_rank, dpu) {
+//			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)input_block_offset[dpu_idx]));
+//			dpu_idx++;
+//		}
+//		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "input_block_offset", 0, sizeof(uint32_t) * NR_TASKLETS, DPU_XFER_DEFAULT));
+//
+//		dpu_idx = starting_dpu_idx;
+//		DPU_FOREACH(dpu_rank, dpu) {
+//			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)output_offset[dpu_idx]));
+//			dpu_idx++;
+//		}
+//		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_TO_DPU, "output_offset", 0, sizeof(uint32_t) * NR_TASKLETS, DPU_XFER_DEFAULT));
+//#endif
+//	}
+//
+//	gettimeofday(&end, NULL);
+//	runtime->copy_in = get_runtime(&start, &end);
+//	
+//	gettimeofday(&start, NULL);
+//	// Launch all DPUs
+//	int ret = dpu_launch(dpus, DPU_SYNCHRONOUS);
+//	gettimeofday(&end, NULL);
+//	runtime->run = get_runtime(&start, &end);
+//	if (ret != 0)
+//	{
+//		DPU_ASSERT(dpu_free(dpus));
+//		return SNAPPY_INVALID_INPUT;
+//	}
+//
+//	//// Open the output file and write the header
+//	//FILE *fout = fopen(output->file_name, "w");
+//	//fwrite(output->buffer, sizeof(uint8_t), output->length, fout);
+//	
+//	// Deallocate the DPUs
+//	runtime->copy_out = 0.0;
+//	uint32_t max_output_length = snappy_max_compressed_length(input_blocks_per_dpu * block_size);
+//	dpu_idx = 0;
+//	DPU_RANK_FOREACH(dpus, dpu_rank) {
+//		uint32_t starting_dpu_idx = dpu_idx;
+//		gettimeofday(&start, NULL);
+//
+//		// Get number of DPUs in this rank
+//		uint32_t nr_dpus;
+//		DPU_ASSERT(dpu_get_nr_dpus(dpu_rank, &nr_dpus));
+//		
+//		uint8_t *dpu_bufs[NR_DPUS] = {NULL};
+//		uint32_t output_length[NR_DPUS][NR_TASKLETS] = {0};
+//
+//#ifdef BULK_XFER
+//		uint32_t largest_output_length = 0;
+//		DPU_FOREACH(dpu_rank, dpu) {
+//			DPU_ASSERT(dpu_prepare_xfer(dpu, output_length[dpu_idx]));
+//			dpu_idx++;
+//		}
+//		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_FROM_DPU, "output_length", 0, sizeof(uint32_t) * NR_TASKLETS, DPU_XFER_DEFAULT));
+//		dpu_idx = starting_dpu_idx;
+//#endif
+//
+//		DPU_FOREACH(dpu_rank, dpu) {
+//#ifndef BULK_XFER
+//			DPU_ASSERT(dpu_copy_from(dpu, "output_length", 0, output_length[dpu_idx], sizeof(uint32_t) * NR_TASKLETS));
+//#endif	
+//			// Calculate the total output length
+//			uint32_t dpu_output_length = 0;
+//			for (uint8_t i = 0; i < NR_TASKLETS; i++) {
+//				if (output_length[dpu_idx][i] != 0) {
+//					output->length += output_length[dpu_idx][i];
+//					dpu_output_length = output_offset[dpu_idx][i] + output_length[dpu_idx][i];
+//				}
+//			}
+//
+//			// Prepare the transfer
+//			dpu_bufs[dpu_idx] = malloc(max_output_length);
+//#ifdef BULK_XFER
+//			if (largest_output_length < dpu_output_length)
+//				largest_output_length = dpu_output_length;
+//
+//			DPU_ASSERT(dpu_prepare_xfer(dpu, (void *)dpu_bufs[dpu_idx]));
+//#else
+//			DPU_ASSERT(dpu_copy_from(dpu, "output_buffer", 0, dpu_bufs[dpu_idx], ALIGN(dpu_output_length, 8)));
+//#endif
+//
+//			dpu_idx++;
+//		}
+//		
+//#ifdef BULK_XFER
+//		DPU_ASSERT(dpu_push_xfer(dpu_rank, DPU_XFER_FROM_DPU, "output_buffer", 0, ALIGN(largest_output_length, 8), DPU_XFER_DEFAULT));
+//#endif
+//		// Don't count the time it takes to read the DPU log or write the data to a file, 
+//		// since we don't count that for the host
+//		gettimeofday(&end, NULL);
+//		runtime->copy_out += get_runtime(&start, &end);	
+//
+//		//// Print the logs
+//		//dpu_idx = starting_dpu_idx;
+//		//DPU_FOREACH(dpu_rank, dpu) {
+//		//	printf("------DPU %d Logs------\n", dpu_idx);
+//		//	DPU_ASSERT(dpu_log_read(dpu, stdout));
+//		//	dpu_idx++;
+//		//}
+//
+//		//for (uint32_t d = nr_dpus; d > 0; d--) {
+//		//	uint32_t curr_dpu_idx = dpu_idx - d;
+//		//	for (uint8_t i = 0; i < NR_TASKLETS; i++) {
+//		//		fwrite(&dpu_bufs[curr_dpu_idx][output_offset[curr_dpu_idx][i]], sizeof(uint8_t), output_length[curr_dpu_idx][i], fout);
+//		//	}
+//		//	free(dpu_bufs[curr_dpu_idx]);
+//		//}
+//	}
+//
+//	gettimeofday(&start, NULL);
+//	DPU_ASSERT(dpu_free(dpus));
+//	gettimeofday(&end, NULL);
+//	runtime->d_free = get_runtime(&start, &end);
+//
+//	//fclose(fout);
+//
+//	return SNAPPY_OK;
+//}

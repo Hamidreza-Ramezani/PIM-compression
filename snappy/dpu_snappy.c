@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 	int opt;
 	snappy_status status;
 	
-	int use_dpu = 0;
+	//int use_dpu = 0;
 	int compress = 0;
 	int block_size = 32 * 1024; // Default is 32KB
 	char *input_file = NULL;
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 		switch(opt)
 		{
 		case 'd':
-			use_dpu = 1;
+			//use_dpu = 1;
 			input.max = NR_DPUS * (unsigned long)MAX_FILE_LENGTH;
 			output.max = NR_DPUS * (unsigned long)MAX_FILE_LENGTH;
 			break;
@@ -166,41 +166,27 @@ int main(int argc, char **argv)
 	if (compress) {
 		setup_compression(&input, &output, &runtime);
 
-		if (use_dpu)
-		{
-			status = snappy_compress_dpu(&input, &output, block_size, &runtime);
-		}
-		else
-		{
-			//struct timeval start;
-			//struct timeval end;
+		//struct timeval start;
+		//struct timeval end;
 
-			//gettimeofday(&start, NULL);	
-			status = snappy_compress_host(&input, &output, block_size, &runtime);
-			//gettimeofday(&end, NULL);
+		//gettimeofday(&start, NULL);	
+		status = snappy_compress_host(&input, &output, block_size, &runtime);
+		//gettimeofday(&end, NULL);
 
-			//runtime.run = get_runtime(&start, &end);
-		}
+		//runtime.run = get_runtime(&start, &end);
 	}
 	else {
 		if (setup_decompression(&input, &output, &runtime))
 			return -1;
 
-		if (use_dpu)
-		{
-			status = snappy_decompress_dpu(&input, &output, &runtime);
-		}
-		else
-		{
-			struct timeval start;
-			struct timeval end;
+		struct timeval start;
+		struct timeval end;
 
-			gettimeofday(&start, NULL);
-			status = snappy_decompress_host(&input, &output);
-			gettimeofday(&end, NULL);
+		gettimeofday(&start, NULL);
+		status = snappy_decompress_host(&input, &output);
+		gettimeofday(&end, NULL);
 
-			runtime.run = get_runtime(&start, &end);
-		}
+		runtime.run = get_runtime(&start, &end);
 	}
 	
 	if (status == SNAPPY_OK)
