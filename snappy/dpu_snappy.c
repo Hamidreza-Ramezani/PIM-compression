@@ -172,14 +172,14 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			struct timeval start;
-			struct timeval end;
+			//struct timeval start;
+			//struct timeval end;
 
-			gettimeofday(&start, NULL);	
-			status = snappy_compress_host(&input, &output, block_size);
-			gettimeofday(&end, NULL);
+			//gettimeofday(&start, NULL);	
+			status = snappy_compress_host(&input, &output, block_size, &runtime);
+			//gettimeofday(&end, NULL);
 
-			runtime.run = get_runtime(&start, &end);
+			//runtime.run = get_runtime(&start, &end);
 		}
 	}
 	else {
@@ -206,7 +206,8 @@ int main(int argc, char **argv)
 	if (status == SNAPPY_OK)
 	{
 		//Write the output buffer from main memory to a file
-		if (!(compress && use_dpu))
+		//if (!(compress && use_dpu))
+		if (!(compress))
 			write_output_host(output_file, &output);
 
 		if (compress) {

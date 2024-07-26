@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <math.h>
 
+#include <pthread.h>
 #include "snappy_compress.h"
 
 #define DPU_COMPRESS_PROGRAM "dpu-compress/compress.dpu"
@@ -16,6 +17,18 @@
  */
 #define MAX_HASH_TABLE_BITS 14
 #define MAX_HASH_TABLE_SIZE (1U << MAX_HASH_TABLE_BITS)
+#define NR_THREADS 64
+
+
+
+
+typedef struct {
+	struct host_buffer_context input;
+	struct host_buffer_context output;
+	uint16_t *table;
+	uint32_t block_size;
+	uint16_t thread_id;
+} compress_host_args;
 
 /**
  * Calculate the rounded down log base 2 of an unsigned integer.
@@ -411,6 +424,11 @@ emit_remainder:
 	}
 
 	write_uint32(output_start - 4, output->curr - output_start);
+    	//uint8_t *final_input_curr = input->curr; // Store final position
+    	//uint32_t shift_amount = final_input_curr - base_input; // Calculate shift
+    	//uint32_t shift_amount = output->curr - output_start + 4; // Calculate shift
+    	//printf("Input variable shifted by %u bytes.\n", shift_amount);
+    	//printf("Output variable shifted by %u bytes.\n", shift_amount);
 }
 
 
@@ -453,8 +471,12 @@ void setup_compression(struct host_buffer_context *input, struct host_buffer_con
 	runtime->pre = get_runtime(&start, &end);
 }
 
-snappy_status snappy_compress_host(struct host_buffer_context *input, struct host_buffer_context *output, uint32_t block_size)
+
+snappy_status snappy_compress_host1(struct host_buffer_context *input, struct host_buffer_context *output, uint32_t block_size, struct program_runtime *runtime)
 {
+	struct timeval start;
+	struct timeval end;
+	gettimeofday(&start, NULL);	
 	// Allocate the hash table for compression
 	uint16_t *table = malloc(sizeof(uint16_t) * MAX_HASH_TABLE_SIZE);
 
@@ -464,23 +486,9 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 
 	// Write the decompressed block size
 	write_varint32(output, block_size);
+	//printf("The length so far is %ld\n", output->curr - output->buffer);
 
-	//while (input->curr < (input->buffer + input->length)) {
-	//	// Get the next block size to compress
-	//	uint32_t to_compress = MIN(length_remain, block_size);
-
-	//	// Get the size of the hash table used for this block
-	//	uint32_t table_size;
-	//	get_hash_table(table, to_compress, &table_size);
-	//	
-	//	// Compress the current block
-	//	compress_block(input, output, to_compress, table, table_size);
-	//	
-	//	length_remain -= to_compress;
-	//}
-	unsigned long num_blocks = (unsigned long)ceil((double)input->length/(double)block_size);
-	//printf("number of blocks is  %lu\n", num_blocks);
-	for (int i=0; i<num_blocks; i++) {
+	while (input->curr < (input->buffer + input->length)) {
 		// Get the next block size to compress
 		uint32_t to_compress = MIN(length_remain, block_size);
 
@@ -497,6 +505,112 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 	// Update output length
 	output->length = (output->curr - output->buffer);
 
+	gettimeofday(&end, NULL);
+
+	runtime->run = get_runtime(&start, &end);
+
+	//FILE *fout = fopen(output->file_name, "w");
+	//fwrite(output->buffer, 1, output->length, fout);
+	//fclose(fout);
+
+	return SNAPPY_OK;
+}
+
+
+void *compress_host(void *args)
+{
+
+	compress_host_args *casted_args = (compress_host_args*)args;
+	struct host_buffer_context *input = &(casted_args->input);
+	struct host_buffer_context *output = &(casted_args->output);
+	uint32_t block_size = casted_args->block_size;
+
+	//uint16_t *table = malloc(sizeof(uint16_t) * MAX_HASH_TABLE_SIZE);
+	uint32_t length_remain = input->length;
+
+	while (input->curr < (input->buffer + input->length)) {
+		uint32_t to_compress = MIN(length_remain, block_size);
+    		uint32_t table_size;
+		get_hash_table(casted_args->table, to_compress, &table_size);
+		compress_block(input, output, to_compress, casted_args->table, table_size);
+		//get_hash_table(table, to_compress, &table_size);
+		//compress_block(input, output, to_compress, table, table_size);
+		length_remain -= to_compress;
+	}
+	output->length = (output->curr - output->buffer);
+	//free(table);
+	return NULL;
+}
+
+snappy_status snappy_compress_host(struct host_buffer_context *input, struct host_buffer_context *output, uint32_t block_size, struct program_runtime *runtime)
+{
+
+	struct timeval start;
+	struct timeval end;
+	gettimeofday(&start, NULL);	
+
+	uint32_t num_blocks = (input->length + block_size - 1) / block_size;
+	uint32_t num_blocks_per_thread = (num_blocks + NR_THREADS - 1) / NR_THREADS;
+	uint32_t input_block_offset[NR_THREADS] = {0};
+	//uint32_t output_block_offset[NR_THREADS] = {0};
+	uint32_t thread_idx = 0;
+	for (uint32_t i = 0; i < num_blocks; i++) {
+		if (i == num_blocks_per_thread * thread_idx) {
+			input_block_offset[thread_idx] = i;
+			//output_block_offset[thread_idx] = ALIGN(snappy_max_compressed_length(block_size * num_blocks_per_thread), 64);
+			thread_idx++;
+		}
+	}
+	write_varint32(output, input->length);
+	write_varint32(output, block_size);
+	output->length = output->curr - output->buffer;
+
+
+//Start timer here
+	pthread_t threads[NR_THREADS];
+	compress_host_args thread_args[NR_THREADS];
+	for (int i = 0; i < NR_THREADS; i++) {
+		thread_args[i].input.file_name = input->file_name;
+		thread_args[i].input.buffer = input->buffer+(input_block_offset[i]*block_size);
+		thread_args[i].input.curr = input->buffer+(input_block_offset[i]*block_size);
+		thread_args[i].input.length = num_blocks_per_thread * block_size;
+		thread_args[i].input.max = input->max;
+
+		thread_args[i].output.file_name = output->file_name;
+		uint32_t max_compressed_length = snappy_max_compressed_length(num_blocks_per_thread * block_size);
+		thread_args[i].output.buffer = malloc(sizeof(uint8_t) * max_compressed_length);
+		thread_args[i].output.curr = thread_args[i].output.buffer;
+		//thread_args[i].output.buffer = output->buffer + (output_block_offset[i]);
+		//thread_args[i].output.curr = output->buffer + (output_block_offset[i]);
+		thread_args[i].output.length = 0;
+		thread_args[i].output.max = output->max;
+
+		thread_args[i].table = malloc(sizeof(uint16_t) * MAX_HASH_TABLE_SIZE);
+		thread_args[i].block_size = block_size;
+		thread_args[i].thread_id = i;
+	}
+	thread_args[NR_THREADS-1].input.length = input->length - (NR_THREADS-1) * num_blocks_per_thread * block_size;
+
+	for (int i = 0; i < NR_THREADS; i++) {
+		pthread_create(&threads[i], NULL, compress_host, &thread_args[i]);
+	}
+
+	// Wait for the threads to finish
+	for (int i = 0; i < NR_THREADS; i++) {
+		pthread_join(threads[i], NULL);
+		free(thread_args[i].table);
+	}
+//End timer here
+	gettimeofday(&end, NULL);
+
+	runtime->run = get_runtime(&start, &end);
+
+	//FILE *fout = fopen(output->file_name, "w");
+	//fwrite(output->buffer, 1, output->length, fout);
+	//for (uint8_t i = 0; i < NR_THREADS; i++) {
+	//	fwrite(thread_args[i].output.buffer, sizeof(uint8_t), thread_args[i].output.length, fout);
+	//}
+	//fclose(fout);
 	return SNAPPY_OK;
 }
 

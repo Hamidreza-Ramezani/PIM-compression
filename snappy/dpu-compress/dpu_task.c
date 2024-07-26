@@ -75,7 +75,7 @@ int main()
 	}
 
 	if (input.length != 0) {
-		// Do the uncompress
+		// Do the compress
 		if (dpu_compress(&input, &output, block_size))
 		{
 			//printf("Tasklet %d: failed in %ld cycles\n", idx, perfcounter_get());

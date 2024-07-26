@@ -23,7 +23,7 @@ void setup_compression(struct host_buffer_context *input, struct host_buffer_con
  * @param block_size: size to compress at a time
  * @return SNAPPY_OK if successful, error code otherwise
  */
-snappy_status snappy_compress_host(struct host_buffer_context *input, struct host_buffer_context *output, uint32_t block_size);
+snappy_status snappy_compress_host(struct host_buffer_context *input, struct host_buffer_context *output, uint32_t block_size, struct program_runtime *runtime);
 
 /**
  * Perform the Snappy compression on the DPU.
