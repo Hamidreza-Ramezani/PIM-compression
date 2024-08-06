@@ -108,12 +108,12 @@ def get_avg_host_runtime(path: pathlib.Path, testfile):
 
 
 
-def get_avg_host_runtime_withoutoverhead(path: pathlib.Path, testfile):
+def get_avg_host_runtime_withoutoverhead(path: pathlib.Path, testfile, block_size):
 
         total_time = 0.0
         num_files = 0
         for filename in path.iterdir():
-                if (testfile in str(filename)) and ('host' in str(filename)):
+                if (testfile in str(filename)) and ('host' in str(filename)) and str(block_size) in str(filename):
                         total_time += get_host_runtime(filename)
                         num_files += 1
 
@@ -199,15 +199,16 @@ def get_compr_ratio(path: pathlib.Path, testfile, num_dpus, num_tasks):
                                                 return float(line_split[-1])
         return -1
 
-def get_avg_dpu_runtime(path: pathlib.Path, testfile, num_dpus, num_tasks):
+def get_avg_dpu_runtime(path: pathlib.Path, testfile, num_dpus, num_tasks, block_size):
 
         total_time = 0.0
         num_files = 0
         for filename in path.iterdir():
                 dpus = re.search(rf"dpus={num_dpus}[^0-9]", str(filename))
                 tasklets = re.search(rf"tasklets={num_tasks}[^0-9]", str(filename))
+                blocks = re.search(rf"{block_size}[^0-9]", str(filename))
                 
-                if (testfile in str(filename)) and (dpus is not None) and (tasklets is not None):
+                if (testfile in str(filename)) and (dpus is not None) and (tasklets is not None) and (blocks is not None):
                         total_time += get_host_runtime(filename)
                         num_files += 1
 
