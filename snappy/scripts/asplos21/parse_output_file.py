@@ -206,7 +206,7 @@ def get_avg_dpu_runtime(path: pathlib.Path, testfile, num_dpus, num_tasks, block
         for filename in path.iterdir():
                 dpus = re.search(rf"dpus={num_dpus}[^0-9]", str(filename))
                 tasklets = re.search(rf"tasklets={num_tasks}[^0-9]", str(filename))
-                blocks = re.search(rf"{block_size}[^0-9]", str(filename))
+                blocks = re.search(rf"_{block_size}[^0-9]", str(filename))
                 
                 if (testfile in str(filename)) and (dpus is not None) and (tasklets is not None) and (blocks is not None):
                         total_time += get_host_runtime(filename)

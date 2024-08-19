@@ -605,6 +605,10 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 
 	runtime->run = get_runtime(&start, &end);
 
+	for (uint8_t i = 0; i < NR_THREADS; i++) {
+		output->length += thread_args[i].output.length;
+	}
+
 	//FILE *fout = fopen(output->file_name, "w");
 	//fwrite(output->buffer, 1, output->length, fout);
 	//for (uint8_t i = 0; i < NR_THREADS; i++) {
