@@ -17,6 +17,27 @@ block_size_list=(2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2
 #   done
 #done
 
+
+for block_size in "${block_size_list[@]}"
+do
+   for tasklets in {1..24}
+   do
+    sudo python run_tests.py -t 1 -f dickens1024MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+   done
+done
+
+
+
+for block_size in "${block_size_list[@]}"
+do
+   for tasklets in {1..24}
+   do
+    sudo python run_tests.py -t 1 -f dickens512MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+   done
+done
+
+
+
 for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}

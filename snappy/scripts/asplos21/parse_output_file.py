@@ -112,8 +112,9 @@ def get_avg_host_runtime_withoutoverhead(path: pathlib.Path, testfile, block_siz
 
         total_time = 0.0
         num_files = 0
+        block_symbol= "_" + str(block_size) + "_"
         for filename in path.iterdir():
-                if (testfile in str(filename)) and ('host' in str(filename)) and str(block_size) in str(filename):
+                if (testfile in str(filename)) and ('host' in str(filename)) and block_symbol in str(filename):
                         total_time += get_host_runtime(filename)
                         num_files += 1
 
@@ -173,7 +174,25 @@ def get_avg_max_cycles(path: pathlib.Path, testfile, num_dpus, num_tasks):
         else:
                 return -1
 
-def get_compr_ratio(path: pathlib.Path, testfile, num_dpus, num_tasks):
+
+def get_host_compr_ratio(path: pathlib.Path, testfile, block_size):
+
+        total_time = 0.0
+        num_files = 0
+        block_symbol= "_" + str(block_size) + "_"
+        for filename in path.iterdir():
+                if (testfile in str(filename)) and ('host' in str(filename)) and block_symbol in str(filename):
+                        with filename.open() as f:
+                                lines = f.readlines()
+                                for line in lines:
+                                        if "Compression ratio" in line:
+                                                line_split = line.split(' ')
+                                                return float(line_split[-1])
+
+        return -1
+
+
+def get_dpu_compr_ratio(path: pathlib.Path, testfile, num_dpus, num_tasks, block_size):
         """
         Get the compression ratio of the file for a particular test case.
 
@@ -185,14 +204,11 @@ def get_compr_ratio(path: pathlib.Path, testfile, num_dpus, num_tasks):
         for filename in path.iterdir():
                 dpus = re.search(rf"dpus={num_dpus}[^0-9]", str(filename))
                 tasklets = re.search(rf"tasklets={num_tasks}[^0-9]", str(filename))
-
-                if (testfile in str(filename)) and (dpus is not None) and (tasklets is not None):
-                        print(filename) 
+                blocks = re.search(rf"_{block_size}[^0-9]", str(filename))
+                
+                if (testfile in str(filename)) and (dpus is not None) and (tasklets is not None) and (blocks is not None):
                         with filename.open() as f:
-                                # Read lines
                                 lines = f.readlines()
-
-                                # Parse out the compression ratio
                                 for line in lines:
                                         if "Compression ratio" in line:
                                                 line_split = line.split(' ')

@@ -17,8 +17,9 @@
  */
 #define MAX_HASH_TABLE_BITS 14
 #define MAX_HASH_TABLE_SIZE (1U << MAX_HASH_TABLE_BITS)
-#define NR_THREADS 64
+//#define NR_THREADS 64
 
+//#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 
 
@@ -550,8 +551,11 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 	gettimeofday(&start, NULL);	
 
 	uint32_t num_blocks = (input->length + block_size - 1) / block_size;
+	uint32_t NR_THREADS = MIN(64, num_blocks);
 	uint32_t num_blocks_per_thread = (num_blocks + NR_THREADS - 1) / NR_THREADS;
-	uint32_t input_block_offset[NR_THREADS] = {0};
+	//uint32_t input_block_offset[NR_THREADS] = {0};
+	uint32_t input_block_offset[NR_THREADS];
+	memset(input_block_offset, 0, NR_THREADS * sizeof(uint32_t));
 	//uint32_t output_block_offset[NR_THREADS] = {0};
 	uint32_t thread_idx = 0;
 	for (uint32_t i = 0; i < num_blocks; i++) {
@@ -569,7 +573,7 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 //Start timer here
 	pthread_t threads[NR_THREADS];
 	compress_host_args thread_args[NR_THREADS];
-	for (int i = 0; i < NR_THREADS; i++) {
+	for (uint32_t i = 0; i < NR_THREADS; i++) {
 		thread_args[i].input.file_name = input->file_name;
 		thread_args[i].input.buffer = input->buffer+(input_block_offset[i]*block_size);
 		thread_args[i].input.curr = input->buffer+(input_block_offset[i]*block_size);
@@ -591,12 +595,12 @@ snappy_status snappy_compress_host(struct host_buffer_context *input, struct hos
 	}
 	thread_args[NR_THREADS-1].input.length = input->length - (NR_THREADS-1) * num_blocks_per_thread * block_size;
 
-	for (int i = 0; i < NR_THREADS; i++) {
+	for (uint32_t i = 0; i < NR_THREADS; i++) {
 		pthread_create(&threads[i], NULL, compress_host, &thread_args[i]);
 	}
 
 	// Wait for the threads to finish
-	for (int i = 0; i < NR_THREADS; i++) {
+	for (uint32_t i = 0; i < NR_THREADS; i++) {
 		pthread_join(threads[i], NULL);
 		free(thread_args[i].table);
 	}

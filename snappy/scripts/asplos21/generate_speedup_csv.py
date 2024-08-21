@@ -4,7 +4,7 @@ import csv
 import argparse
 import pathlib
 from math import ceil
-from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_host_runtime_withoutoverhead, get_avg_overhead_time, get_avg_dpu_runtime
+from parse_output_file import get_avg_max_cycles, get_avg_host_runtime, get_avg_host_runtime_withoutoverhead, get_avg_overhead_time, get_avg_dpu_runtime, get_dpu_compr_ratio, get_host_compr_ratio
 MAX_DPUS = 2304
 MAX_TASKLETS = 24
 
@@ -23,8 +23,8 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
         block_size_list=[2048,4096,8192,16384,32768,65536,131072,262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216]
         with open('results/compression_speedup_dpu.csv', 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',')
-                writer.writerow(['version', 'Runtimewithoutoverhead', 'Speedupwithoutoverhead' ,'dpus', 'tasklets', 'block_size'])
-                writer.writerow(['host','0', '1' ,'0', '0', '0'])
+                writer.writerow(['version', 'DPU_Runtime', 'Host_Runtime' , 'dpu_cmpr_ratio', 'host_cmpr_ratio' , 'Speedup' ,'dpus', 'tasklets', 'block_size'])
+                writer.writerow(['host','0', '0', '1', '1' ,'1'  ,'0', '0', '0'])
 
                 for testfile in files:
                     #for i in [min_dpu] + list(range(min_dpu - 1 + incr, max_dpu + 1, incr)):
@@ -37,6 +37,8 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
                                 host_withoutoverhead = get_avg_host_runtime_withoutoverhead(pathlib.Path("results/compression"), testfile, block_size)
                                 dpu = get_avg_dpu_runtime(pathlib.Path("results/compression"), testfile, i, tasklets, block_size)
                                 #dpu_overhead = get_avg_overhead_time(pathlib.Path("results/compression"), testfile, i, tasklets, block_size)
+                                host_cmpr_ratio = get_host_compr_ratio(pathlib.Path("results/compression"), testfile, block_size)
+                                dpu_cmpr_ratio = get_dpu_compr_ratio(pathlib.Path("results/compression"), testfile, i, tasklets, block_size)
 
                                 if dpu > 0:
                                     #std_dpu = host / (dpu + sum(dpu_overhead))
@@ -45,7 +47,7 @@ def run_dpu_test(files, min_dpu, max_dpu, incr):
                                     #dpu_withoverhead = dpu + sum(dpu_overhead)
                                     #std_dpu_withoverhead = host_withoverhead / dpu_withoverhead
                                     std_dpu_withoutoverhead = host_withoutoverhead / dpu
-                                    writer.writerow([testfile, dpu, std_dpu_withoutoverhead, i, tasklets, block_size])
+                                    writer.writerow([testfile, dpu, host_withoutoverhead, dpu_cmpr_ratio, host_cmpr_ratio,  std_dpu_withoutoverhead, i, tasklets, block_size])
        
         
 if __name__ == "__main__":
