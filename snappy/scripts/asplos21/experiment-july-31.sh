@@ -22,7 +22,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens1024MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci1024MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
    done
 done
 
@@ -32,7 +32,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens512MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci512MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
    done
 done
 
@@ -42,7 +42,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens256MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci256MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
    done
 done
 
@@ -52,7 +52,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens128MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci128MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
    done
 done
 
@@ -61,7 +61,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens64MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci64MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
    done
 done
 
@@ -70,7 +70,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens32MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci32MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
    done
 done
 
@@ -79,7 +79,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens16MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci16MB -r 2304 2304 -i 64 -b ${block_size} -k ${tasklets}
    done
 done
 
@@ -88,7 +88,7 @@ for block_size in "${block_size_list[@]}"
 do
    for tasklets in {1..24}
    do
-    sudo python run_tests.py -t 1 -f dickens8MB -r 2304 2304 -i 64 -b ${block_size}  -k ${tasklets}
+    sudo python run_tests.py -t 1 -f nci8MB -r 2304 2304 -i 64 -b ${block_size}  -k ${tasklets}
    done
 done
 
