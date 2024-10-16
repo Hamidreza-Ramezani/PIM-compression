@@ -1,3 +1,4 @@
 # ignore generated test files
 test/
 output.txt
+output

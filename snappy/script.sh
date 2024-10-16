@@ -21,7 +21,7 @@ size8=1024
 
 
 application="$HOME/pim-compression/snappy/dpu_snappy"
-results_dir="$HOME/snappy-roofline-results/july26"
+#results_dir="$HOME/snappy-roofline-results/july26"
 
 
 
@@ -40,15 +40,15 @@ results_dir="$HOME/snappy-roofline-results/july26"
 #done
 
 
-data_arr=("$data1" "$data2" "$data3" "$data4" "$data5" "$data6")
-size_arr=($size8)
-block_arr=(32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216)
+data_arr=("$data1")
+size_arr=($size1 $size2 $size3 $size4 $size5 $size6 $size7 $size8)
+block_arr=(2048 4096 8192 16384 32768 65536)
 
 # Nested for loop
 for data in "${data_arr[@]}"; do
   for size in "${size_arr[@]}"; do
     for block in "${block_arr[@]}"; do
-      #echo "Processing $data with size $size and block size $block"
+      echo "Processing $data with size $size and block size $block"
       path="${data}${size}MB.txt"
       $application -c -i $path -b $block
     done
